@@ -4,7 +4,8 @@
 
 
 #1
-set.seed(987654321)
+#set.seed(987654321)
+set.seed(12345)
 timestep <- 100
 num_particles <- 100
 
@@ -12,7 +13,7 @@ transition_model <- function(initial_model, timestep){
   z_current <- vector(length=timestep)
   z_current[1] <- initial_model # initial model
   for(i in 1:(timestep+1)){
-    which_mean<-sample(1:3, size = 1, prob = rep(1/3, 3))
+    which_mean<-sample(1:3, size = 1)
     z_current[i+1] <- rnorm(n=1, mean=z_current[i]+which_mean-1, sd=1)
   }
   z_current[2:(timestep+1)]
@@ -20,17 +21,12 @@ transition_model <- function(initial_model, timestep){
 
 z_states <- transition_model(runif(1,0,100), timestep)
 
-emission_prob <- function(z, sd){
-  which_mean<-sample(1:3, size = 1, prob = rep(1/3, 3))
-  rnorm(n=1, mean=z+which_mean-2, sd=sd)
-}
-
 emission_model <- function(timestep, z_states, sd=1){
   x_current <- vector(length=timestep)
   for(i in 1:timestep){
-    x_current[i]<- emission_prob(z=z_states[i], sd=sd)
+    which_mean<-sample(1:3, size = 1)
+    x_current[i]<- rnorm(n=1, mean=z_states[i]+which_mean-2, sd=sd)
   }
-  #x_current <- apply(z_states, 2, function(z){emission_prob(z, sd)})
   x_current
 }
 
@@ -38,7 +34,7 @@ emission_model <- function(timestep, z_states, sd=1){
 x_obs <- emission_model(timestep, z_states)
 
 
-particle_filter <- function(x_obs, z_states, num_particles, timestep, sd, correction=TRUE){
+particle_filter <- function(x_obs, num_particles, timestep, sd, correction=TRUE){
   Z_bar <- matrix(ncol=num_particles, nrow=timestep+1) #particles -prediction
   #initialization
   Z_bar[1,] <- runif(num_particles, 0, 100) #Z0
@@ -56,7 +52,7 @@ particle_filter <- function(x_obs, z_states, num_particles, timestep, sd, correc
   return(list("Z_bar"=Z_bar[-1,], "Z"=Z))
 }
 
-particles1<-particle_filter(x_obs, z_states, num_particles, timestep, sd=1)
+particles1<-particle_filter(x_obs, num_particles, timestep, sd=1)
 exp_location <- rowMeans(particles1$Z)
 
 
@@ -64,18 +60,18 @@ exp_location <- rowMeans(particles1$Z)
 
 #sd=5 in emission
 x_obs2 <- emission_model(timestep, z_states, sd = 5)
-particles2 <- particle_filter(x_obs2, z_states, num_particles, timestep, sd=5)
+particles2 <- particle_filter(x_obs2, num_particles, timestep, sd=5)
 exp_location2 <- rowMeans(particles2$Z)
 
 #sd=50 in emission
 x_obs3 <- emission_model(timestep, z_states, sd = 50)
-particles3 <- particle_filter(x_obs3, z_states, num_particles, timestep, sd=50)
+particles3 <- particle_filter(x_obs3, num_particles, timestep, sd=50)
 exp_location3 <- rowMeans(particles3$Z)
 
 
 #3
 
-particles4 <- particle_filter(x_obs, z_states, num_particles, timestep, sd=1, correction = FALSE)
+particles4 <- particle_filter(x_obs, num_particles, timestep, sd=1, correction = FALSE)
 exp_location4 <- rowMeans(particles4$Z_bar)
 
 
