@@ -12,6 +12,17 @@ set.seed(987654321)
 
 ## Question 1
 
+*Transition model*:
+$$p(z_t|z_{t-1})=\frac{1}{3}[N(z_t|z_{t-1},1)+N(z_t|z_{t-1}+1,1)+N(z_t|z_{t-1}+2,1)]$$
+
+*Emission model*:
+$$p(x_t|z_{t})=\frac{1}{3}[N(x_t|z_{t},1)+N(x_t|z_{t}+1,1)+N(x_t|z_{t}-1,1)]$$
+
+*Initial model*:
+$$p(z_1)=Uniform(0,100)$$
+
+
+For $T=100$ time steps, states $z_{1:T}$ (robot location) were simulated using the initial and transition models, and observations $x_{1:T}$ (sensor readings) were simulated using the emission model. Using the observations, we identified the state using the particle filter algorithm with 100 particles.
 
 
 ```{r}
