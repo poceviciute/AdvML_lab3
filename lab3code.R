@@ -12,7 +12,8 @@ transition_model <- function(initial_model, timestep){
   z_current <- vector(length=timestep)
   z_current[1] <- initial_model # initial model
   for(i in 1:(timestep+1)){
-   z_current[i+1] <- (rnorm(n=1, mean=z_current[i], sd=1) + rnorm(n=1, mean=z_current[i]+1, sd=1) +rnorm(n=1, mean=z_current[i]+2, sd=1))/3
+    which_mean<-sample(1:3, size = 1, prob = rep(1/3, 3))
+    z_current[i+1] <- rnorm(n=1, mean=z_current[i]+which_mean-1, sd=1)
   }
   z_current[2:(timestep+1)]
 }
@@ -20,14 +21,14 @@ transition_model <- function(initial_model, timestep){
 z_states <- transition_model(runif(1,0,100), timestep)
 
 emission_prob <- function(z, sd){
-  (rnorm(n=1, mean=z, sd=sd) + rnorm(n=1, mean=z-1, sd=sd) + rnorm(n=1, mean=z+1, sd=sd))/3
+  which_mean<-sample(1:3, size = 1, prob = rep(1/3, 3))
+  rnorm(n=1, mean=z+which_mean-2, sd=sd)
 }
 
 emission_model <- function(timestep, z_states, sd=1){
   x_current <- vector(length=timestep)
   for(i in 1:timestep){
     x_current[i]<- emission_prob(z=z_states[i], sd=sd)
-      #(rnorm(n=1, mean=z_states[i], sd=sd) + rnorm(n=1, mean=z_states[i]-1, sd=sd) + rnorm(n=1, mean=z_states[i]+1, sd=sd))/3
   }
   #x_current <- apply(z_states, 2, function(z){emission_prob(z, sd)})
   x_current
@@ -46,7 +47,7 @@ particle_filter <- function(x_obs, z_states, num_particles, timestep, sd, correc
   for(i in 1:timestep){
     for(j in 1:num_particles){
       Z_bar[i+1,j] <- transition_model(Z_bar[i,j],1) #transition?
-      w[i,j] <- dnorm(x_obs[i], Z_bar[i+1,j], sd) #emission model
+      w[i,j] <- (dnorm(x_obs[i], Z_bar[i+1,j], sd)+dnorm(x_obs[i], Z_bar[i+1,j]-1, sd)+dnorm(x_obs[i], Z_bar[i+1,j]+1, sd))/3 #emission model
     }
     if(correction){
       Z[i,] <- sample(Z_bar[i+1,], size=num_particles, replace = TRUE, prob=w[i,])
@@ -106,6 +107,10 @@ lines(exp_location, col="blue")
 lines(exp_location4, col="purple")
 legend("bottomright",c("observation","true position","expected, sd=1","no correction"),
        col = c("black","red","blue","purple"), lty = c(3, 1, 1, 1), lwd=c(3, 2, 2, 2))
+plot(z_states-exp_location)
+plot(z_states-exp_location2)
+plot(z_states-exp_location3)
+plot(z_states-exp_location4)
 
 plot(x_obs2, pch=19)
 lines(z_states, col="red")
