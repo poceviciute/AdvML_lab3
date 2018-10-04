@@ -29,6 +29,7 @@ emission_model <- function(timestep, z_states, sd=1){
     x_current[i]<- emission_prob(z=z_states[i], sd=sd)
       #(rnorm(n=1, mean=z_states[i], sd=sd) + rnorm(n=1, mean=z_states[i]-1, sd=sd) + rnorm(n=1, mean=z_states[i]+1, sd=sd))/3
   }
+  #x_current <- apply(z_states, 2, function(z){emission_prob(z, sd)})
   x_current
 }
 
@@ -48,9 +49,7 @@ particle_filter <- function(x_obs, z_states, num_particles, timestep, sd, correc
       w[i,j] <- dnorm(x_obs[i], Z_bar[i+1,j], sd) #emission model
     }
     if(correction){
-      for(k in 1:num_particles){
-        Z[i,k] <- sample(Z_bar[i+1,], size=1, prob=w[i,])
-      }
+      Z[i,] <- sample(Z_bar[i+1,], size=num_particles, replace = TRUE, prob=w[i,])
     }
   }
   return(list("Z_bar"=Z_bar[-1,], "Z"=Z))
@@ -90,14 +89,33 @@ comp_location[4,]<-exp_location3[what_time]
 comp_location[5,]<-exp_location4[what_time]
 colnames(comp_location) <- what_time
 rownames(comp_location) <- c("True", "exp1", "exp2", "exp3", "exp4")
+comp_location
 
-
-plot(x_obs, pch=20, ylab="Position", xlab="Time step", 
-     main="Comparison of observations, true location, expected location", ylim = c(20,170))
-lines(z_states, col="red")
+plot(z_states, type="l", ylab="Position", xlab="Time step", 
+     main="Comparison of true location and expected locations", ylim = c(20,170))
 lines(exp_location, col="blue")
 lines(exp_location2, col="green")
-lines(exp_location3, col="grey")
+lines(exp_location3, col="red")
 lines(exp_location4, col="purple")
-legend("bottomright",c("observations","true position","expected, sd=1","expected, sd=5","expected, sd=50","no correction"),
-       col = c("black","red","blue","green","grey","purple"), lty = c(3, 1, 1, 1, 1, 1), lwd=c(3, rep(2,5)))
+legend("bottomright",c("true position","expected, sd=1","expected, sd=5","expected, sd=50","no correction"),
+       col = c("black","blue","green","red","purple"), lty = c(3, 1, 1, 1, 1, 1), lwd=c(3, rep(2,5)))
+
+plot(x_obs, pch=19)
+lines(z_states, col="red")
+lines(exp_location, col="blue")
+lines(exp_location4, col="purple")
+legend("bottomright",c("observation","true position","expected, sd=1","no correction"),
+       col = c("black","red","blue","purple"), lty = c(3, 1, 1, 1), lwd=c(3, 2, 2, 2))
+
+plot(x_obs2, pch=19)
+lines(z_states, col="red")
+lines(exp_location2, col="blue")
+legend("bottomright",c("observation","true position","expected, sd=5"),
+       col = c("black","red","blue"), lty = c(3, 1, 1), lwd=c(3, 2, 2))
+
+plot(x_obs3, pch=19)
+lines(z_states, col="red")
+lines(exp_location3, col="blue")
+legend("bottomright",c("observation","true position","expected, sd=50"),
+       col = c("black","red","blue"), lty = c(3, 1, 1), lwd=c(3, 2, 2))
+
