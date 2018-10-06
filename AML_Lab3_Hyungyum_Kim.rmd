@@ -1,0 +1,398 @@
+---
+title: "AML_Lab3_Hyungyum_Kim"
+author: "Josh Hyungyum Kim"
+date: "2018 - 10 - 4"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### 1. Implement the SSM. 
+
+```{r}
+
+# 1.
+
+# seed for reproducible results
+set.seed(12345)
+
+# T = 100
+Tsteps <- 100
+
+# Vectors for true states and observations
+Tstates <- c()
+obs <- c()
+
+# Initial model
+init <- round(runif(1, 0, 100))
+
+# simulation of 100 time steps
+for(i in 1:Tsteps){
+  
+  if (i==1){
+    Tstates[1] <- init
+  }else{
+    # select one model of mixtures
+    mix_comp2 <- sample((0:2),1)
+    Tstates[i] <- round(rnorm(1, Tstates[i-1]+mix_comp2, 1))  
+  }
+  
+  # select one model of mixtures
+  mix_comp <- sample((-1:1),1)
+  # observation 
+  obs[i] <- round(rnorm(1, Tstates[i]+mix_comp, 1))
+}
+
+# Print the results
+list("True_location"=Tstates, "Expected_location"=obs)
+```
+
+The SSM described in lab instruction is implemented and the simulation of 100 time steps are listed above. The observations will be used to identify the state via particle filtering(100 particles). Particle filtering algorithm is implemented as below:
+
+
+
+```{r, fig.height=6}
+
+# particle filter
+
+# emission model
+emi_model <- function(z, sd){
+  # select one model of mixtures
+  mix_comp <- sample((-1:1), 1)
+  
+  rnorm(1, z+mix_comp, sd)
+}
+
+# transition model
+trans_model <- function(z, sd){
+  iter <- length(z)
+  res <- c()
+  
+  for(i in 1:iter){
+    mix_comp <- sample((0:2), 1)
+    res[i] <- rnorm(1, z[i]+mix_comp, sd)
+  }
+  res
+}
+
+# density function
+den_fun <- function(mean, input, sd){
+  (dnorm(x=input, mean=mean, sd=sd)+
+   dnorm(x=input, mean=mean+1, sd=sd)+
+   dnorm(x=input, mean=mean-1, sd=sd))/3
+}
+
+# 100 particles
+num_parti <- 100
+
+particle <- function(weight=TRUE, sd=1){
+  
+  # lists for storing weights and particles
+  Zn <- list()
+  Wn <- list()
+  
+  # 100 samples
+  Zn[[1]] <- runif(num_parti, 0 ,100)
+  
+  for(i in 1:Tsteps){
+    
+    numer <- sapply(X = Zn[[i]], FUN = den_fun, input=obs[i], sd=sd)
+    Wn[[i]] <- numer / sum(numer)
+    
+    if(i==Tsteps){break}
+    
+    # correction and prediction
+    if(weight==TRUE){
+      ind <- sample(1:num_parti, 100, replace=TRUE, prob=Wn[[i]])
+    }else{
+      ind <- sample(1:num_parti, 100, replace=TRUE)
+    }
+    
+    # new particle
+    Zn[[i+1]] <- trans_model(Zn[[i]][ind], sd=sd)
+  }
+  list("Weights"=Wn, "Particles"=Zn)
+}
+
+res <- particle()
+
+parti_plot <- function(res){
+  Wn <- res$Weights
+  Zn <- res$Particles
+  
+  par(mfrow=c(2,2))
+  for(i in c(1,26,50,100)){
+    hist(Zn[[i]], freq = FALSE, col="grey88", breaks=10,
+         main=i, xlab="Position")
+    lines(density(Zn[[i]]), col="lightblue")
+    abline(v=sum(Wn[[i]]*Zn[[i]]), col="blue", lwd=2) # Prediction
+    abline(v=Tstates[i], col="Red", lwd=2) # True State
+  }
+}
+
+parti_plot(res)
+```
+
+Above 4 different histograms show particles of time step 1, 26, 50 and 100. Lightblue line means approximated density, blue line means expected location and the red line means the true location. 
+
+\clearpage
+
+### 2. Repeat with SD=5, 50.
+
+```{r, fig.height=6}
+
+# 2.
+
+# result with SD=5
+res5 <- particle(sd=5)
+parti_plot(res5)
+title("Result with SD=5", outer=TRUE, line=-1)
+
+# result with SD=50
+res50 <- particle(sd=50)
+parti_plot(res50)
+title("Result with SD=50", outer=TRUE, line=-1)
+```
+Based on the above plots, one might say that it is obvious the particles become more and more sparsed when the sd increases. This is a natural outcome since the sd influence the probability distributions of emission model and transition model. However, the result of expected locations is still quite close to the true locations.
+
+\clearpage
+
+### 3. Weight=1.
+
+
+```{r, fig.height=6}
+
+# 3. 
+
+res_nofil <- particle(weight = FALSE)
+parti_plot(res_nofil)
+title("Result with weight=1", outer=TRUE, line=-1)
+
+```
+
+Even though there is no weighting to the particles, the result of expected locations are pretty nice. 
+
+
+
+
+
+
+```{r, echo=FALSE, eval=FALSE}
+
+# 1.
+
+# seed for reproducible results
+set.seed(12345)
+
+# T = 100
+Tsteps <- 100
+
+# Initial model
+init <- round(runif(1, 0, 100))
+
+# Emission model
+emi_model <- function(Zt){
+  emi_res <- list()
+  for(i in 1:length(Zt)){
+    mix_comp <- sample((-1:1),1)
+    emi_res[[i]] <- rnorm(1, Zt[[i]]+mix_comp, 1)
+  }
+  emi_res
+}
+
+# Transition model
+trans_model <- function(Zt_1){
+  trans_res <- list()
+  for(i in 1:length(Zt_1)){
+    mix_comp <- sample((0:2),1)
+    trans_res[[i]] <- rnorm(1, Zt_1[[i]]+mix_comp, 1)
+  }
+  trans_res
+}
+
+# Vectors for true states and observations
+Tstates <- list()
+obs <- list()
+
+# Simulate it for 100 time steps
+for(i in 1:Tsteps){
+  if(i==1){
+    obs[i] <- emi_model(init)
+    Tstates[i] <- init
+  }else{
+    Tstates[i] <- trans_model(Tstates[[i-1]])
+    obs[i] <- emi_model(Tstates[[i]])
+  }
+}
+
+# Print the results
+list("True_location"=round(unlist(Tstates)), "Expected_location"=round(unlist(obs)))
+
+# Density calculation function
+den_fun <- function(Xt, mean, sd){
+  res <- ((dnorm(x=Xt, mean=mean, sd=sd) + dnorm(x=Xt, mean=mean-1, sd=sd) + dnorm(x=Xt, mean=mean+1, sd=sd))/3)
+  res
+}
+
+# Number of particles
+num_parti <- 100
+
+# Particle function
+particle <- function(sd=1){
+  # Lists for storing  Zn and weights
+  Zn <- list()
+  Wn <- list()
+  
+  # Initialization
+  Zn[[1]] <- runif(num_parti, 0, 100)
+  
+  for(i in 1:Tsteps){
+    # Weights calculation // slide 10 of SSM_L3
+    numer <- as.vector(sapply(X=Zn[[i]], FUN=den_fun, Xt=obs[[i]], sd=sd))
+    Wn[[i]] <- numer / sum(numer)
+    
+    # Loop exit
+    if(i==Tsteps){break}
+    
+    # Correction and prediction
+    ind <- sample(1:num_parti, 100, replace=TRUE, prob=Wn[[i]])
+    Zn[[i+1]] <- unlist(trans_model(Zn[[i]][ind]))
+  }
+  list("Weights"=Wn, "Particles"=Zn)
+}
+
+# Get results with sd=1
+res <- particle(sd=1)
+
+# Plot results
+for(i in c(1,26,50,100)){
+  
+  plot(res$Particles[[i]], rep(1, num_parti), xlim=c(0,200))
+  abline(v=sum(res$Weights[[i]]*res$Particles[[i]]), col="red")
+}
+
+
+# unlist(Tstates[c(1,26,50,100)])
+# unlist(obs[c(1,26,50,100)])
+# 
+# sum(res$Weights[[1]]*res$Particles[[1]])
+# sum(res$Weights[[26]]*res$Particles[[26]])
+# sum(res$Weights[[50]]*res$Particles[[50]])
+# sum(res$Weights[[100]]*res$Particles[[100]])
+# 
+# par(mfrow=c(2,2))
+# 
+# hist(res$Particles[[1]], freq=FALSE)
+# abline(v=c(Tstates[[1]], sum(res$Weights[[1]]*res$Particles[[1]])), col=c(1,2), lwd=2)
+# 
+# hist(res$Particles[[26]], freq=FALSE)
+# abline(v=c(Tstates[[26]], sum(res$Weights[[26]]*res$Particles[[26]])), col=c(1,2), lwd=2)
+# 
+# hist(res$Particles[[50]], freq=FALSE)
+# abline(v=c(Tstates[[50]], sum(res$Weights[[50]]*res$Particles[[50]])), col=c(1,2), lwd=2)
+# 
+# 
+# hist(res$Particles[[100]], freq=FALSE)
+# abline(v=c(Tstates[[100]], sum(res$Weights[[100]]*res$Particles[[100]])), col=c(1,2), lwd=2)
+
+```
+
+
+```{r, echo=FALSE, eval=FALSE}
+
+# 2.
+
+# Emission model with sd=5
+emi_model5 <- function(Zt, sd=5){
+  emi_res <- list()
+  for(i in 1:length(Zt)){
+    emi_res[[i]] <- round((rnorm(1, Zt[[i]], 5) + rnorm(1, Zt[[i]]-1, 5) + rnorm(1, Zt[[i]]+1, 5))/3)
+  }
+  emi_res
+}
+
+# Simulate it for 100 time steps
+for(i in 1:Tsteps){
+  if(i==1){
+    obs[i] <- emi_model5(init)
+    Tstates[i] <- init
+  }else{
+    Tstates[i] <- trans_model(Tstates[[i-1]])
+    obs[i] <- emi_model5(Tstates[[i]])
+  }
+}
+
+res5 <- particle(sd=5)
+
+unlist(Tstates[c(1,26,50,100)])
+unlist(obs[c(1,26,50,100)])
+
+sum(res5$Weights[[1]]*res5$Particles[[1]])
+sum(res5$Weights[[26]]*res5$Particles[[26]])
+sum(res5$Weights[[50]]*res5$Particles[[50]])
+sum(res5$Weights[[100]]*res5$Particles[[100]])
+
+par(mfrow=c(2,2))
+
+hist(res5$Particles[[1]], freq=FALSE)
+abline(v=c(Tstates[[1]], sum(res5$Weights[[1]]*res5$Particles[[1]])), col=c(1,2), lwd=2)
+
+hist(res5$Particles[[26]], freq=FALSE)
+abline(v=c(Tstates[[26]], sum(res5$Weights[[26]]*res5$Particles[[26]])), col=c(1,2), lwd=2)
+
+hist(res5$Particles[[50]], freq=FALSE)
+abline(v=c(Tstates[[50]], sum(res5$Weights[[50]]*res5$Particles[[50]])), col=c(1,2), lwd=2)
+
+
+hist(res5$Particles[[100]], freq=FALSE)
+abline(v=c(Tstates[[100]], sum(res5$Weights[[100]]*res5$Particles[[100]])), col=c(1,2), lwd=2)
+
+
+# Emission model with sd=50
+emi_model50 <- function(Zt, sd=50){
+  emi_res <- list()
+  for(i in 1:length(Zt)){
+    emi_res[[i]] <- round((rnorm(1, Zt[[i]], 50) + rnorm(1, Zt[[i]]-1, 50) + rnorm(1, Zt[[i]]+1, 50))/3)
+  }
+  emi_res
+}
+
+# Simulate it for 100 time steps
+for(i in 1:Tsteps){
+  if(i==1){
+    obs[i] <- emi_model50(init)
+    Tstates[i] <- init
+  }else{
+    Tstates[i] <- trans_model(Tstates[[i-1]])
+    obs[i] <- emi_model50(Tstates[[i]])
+  }
+}
+
+res50 <- particle(sd=50)
+
+unlist(Tstates[c(1,26,50,100)])
+unlist(obs[c(1,26,50,100)])
+
+sum(res50$Weights[[1]]*res50$Particles[[1]])
+sum(res50$Weights[[26]]*res50$Particles[[26]])
+sum(res50$Weights[[50]]*res50$Particles[[50]])
+sum(res50$Weights[[100]]*res50$Particles[[100]])
+
+par(mfrow=c(2,2))
+
+hist(res50$Particles[[1]], freq=FALSE)
+abline(v=c(Tstates[[1]], sum(res50$Weights[[1]]*res50$Particles[[1]])), col=c(1,2), lwd=2)
+
+hist(res50$Particles[[26]], freq=FALSE)
+abline(v=c(Tstates[[26]], sum(res50$Weights[[26]]*res50$Particles[[26]])), col=c(1,2), lwd=2)
+
+hist(res50$Particles[[50]], freq=FALSE)
+abline(v=c(Tstates[[50]], sum(res50$Weights[[50]]*res50$Particles[[50]])), col=c(1,2), lwd=2)
+
+
+hist(res50$Particles[[100]], freq=FALSE)
+abline(v=c(Tstates[[100]], sum(res50$Weights[[100]]*res50$Particles[[100]])), col=c(1,2), lwd=2)
+```
+
