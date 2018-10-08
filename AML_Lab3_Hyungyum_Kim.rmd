@@ -15,9 +15,6 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # 1.
 
-# seed for reproducible results
-set.seed(12345)
-
 # T = 100
 Tsteps <- 100
 
@@ -26,9 +23,11 @@ Tstates <- c()
 obs <- c()
 
 # Initial model
+set.seed(123456) # seed for reproducible results
 init <- round(runif(1, 0, 100))
 
 # simulation of 100 time steps
+set.seed(123456)
 for(i in 1:Tsteps){
   
   if (i==1){
@@ -57,22 +56,14 @@ The SSM described in lab instruction is implemented and the simulation of 100 ti
 
 # particle filter
 
-# emission model
-emi_model <- function(z, sd){
-  # select one model of mixtures
-  mix_comp <- sample((-1:1), 1)
-  
-  rnorm(1, z+mix_comp, sd)
-}
-
 # transition model
-trans_model <- function(z, sd){
+trans_model <- function(z){
   iter <- length(z)
   res <- c()
   
   for(i in 1:iter){
     mix_comp <- sample((0:2), 1)
-    res[i] <- rnorm(1, z[i]+mix_comp, sd)
+    res[i] <- rnorm(1, z[i]+mix_comp, 1)
   }
   res
 }
@@ -111,7 +102,7 @@ particle <- function(weight=TRUE, sd=1){
     }
     
     # new particle
-    Zn[[i+1]] <- trans_model(Zn[[i]][ind], sd=sd)
+    Zn[[i+1]] <- trans_model(Zn[[i]][ind])
   }
   list("Weights"=Wn, "Particles"=Zn)
 }
@@ -145,17 +136,38 @@ Above 4 different histograms show particles of time step 1, 26, 50 and 100. Ligh
 
 # 2.
 
+# simulation of 100 time steps with sd=5
+set.seed(123456)
+for(i in 1:Tsteps){
+  
+  # select one model of mixtures
+  mix_comp <- sample((-1:1),1)
+  # observation 
+  obs[i] <- round(rnorm(1, Tstates[i]+mix_comp, 5))
+}
+
 # result with SD=5
 res5 <- particle(sd=5)
 parti_plot(res5)
 title("Result with SD=5", outer=TRUE, line=-1)
+
+
+# simulation of 100 time steps with sd=50
+set.seed(123456)
+for(i in 1:Tsteps){
+  
+  # select one model of mixtures
+  mix_comp <- sample((-1:1),1)
+  # observation 
+  obs[i] <- round(rnorm(1, Tstates[i]+mix_comp, 50))
+}
 
 # result with SD=50
 res50 <- particle(sd=50)
 parti_plot(res50)
 title("Result with SD=50", outer=TRUE, line=-1)
 ```
-Based on the above plots, one might say that it is obvious the particles become more and more sparsed when the sd increases. This is a natural outcome since the sd influence the probability distributions of emission model and transition model. However, the result of expected locations is still quite close to the true locations.
+Based on the above plots, one might say that it is obvious the particles become more and more sparsed when the sd increases. This is a natural outcome since the sd influence the probability distributions of emission model. Furthermore, the results of prediction get worse since high standard deviation gives more uncertatinty for observations. 
 
 \clearpage
 
@@ -172,7 +184,7 @@ title("Result with weight=1", outer=TRUE, line=-1)
 
 ```
 
-Even though there is no weighting to the particles, the result of expected locations are pretty nice. 
+When the weight=1 for every particle which means there is no correction, results of 4 time steps get really worse. Some true locations and expected locations are missing in the histograms above. As the correction process decreases uncertatinty this result is understandable.
 
 
 
