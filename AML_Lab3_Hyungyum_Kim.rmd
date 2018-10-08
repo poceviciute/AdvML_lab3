@@ -178,13 +178,31 @@ Based on the above plots, one might say that it is obvious the particles become 
 
 # 3. 
 
+# To use same True state and obs for Q3 as Q1
+set.seed(123456)
+for(i in 1:Tsteps){
+  
+  if (i==1){
+    Tstates[1] <- init
+  }else{
+    # select one model of mixtures
+    mix_comp2 <- sample((0:2),1)
+    Tstates[i] <- round(rnorm(1, Tstates[i-1]+mix_comp2, 1))  
+  }
+  
+  # select one model of mixtures
+  mix_comp <- sample((-1:1),1)
+  # observation 
+  obs[i] <- round(rnorm(1, Tstates[i]+mix_comp, 1))
+}
+
 res_nofil <- particle(weight = FALSE)
 parti_plot(res_nofil)
 title("Result with weight=1", outer=TRUE, line=-1)
 
 ```
 
-When the weight=1 for every particle which means there is no correction, results of 4 time steps get really worse. Some true locations and expected locations are missing in the histograms above. As the correction process decreases uncertatinty this result is understandable.
+When the weight=1 for every particle which means there is no correction, results of 4 time steps are really close to the true states. Maybe it is because the transition model is the same and the particles could move along with the observations. However, the histograms of particles are very sparsed  than any weighted runs above.
 
 
 
