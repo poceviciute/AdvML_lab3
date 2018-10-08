@@ -1,32 +1,232 @@
 ---
 title: '732A96 Lab 3: State Space Models'
 author: "Fanny Karelius (fanka300)"
-date: "29 september 2018"
-output: html_document
+date: "5 october 2018"
+output:
+  html_document: default
 ---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+set.seed(987654321)
+```
 
 Using the particle filter algorithm we attempt to localize a robot that moves in a horizontal line. The following State Space Model (SSM) was used:
 
-*Transition model*:
+**Transition model:**
 $$p(z_t|z_{t-1})=\frac{1}{3}[N(z_t|z_{t-1},1)+N(z_t|z_{t-1}+1,1)+N(z_t|z_{t-1}+2,1)]$$
 
-*Emission model*:
+**Emission model:**
 $$p(x_t|z_{t})=\frac{1}{3}[N(x_t|z_{t},1)+N(x_t|z_{t}+1,1)+N(x_t|z_{t}-1,1)]$$
 
-*Initial model*:
+**Initial model:**
 $$p(z_1)=Uniform(0,100)$$
+
 
 # Question 1
 
 For $T=100$ time steps, states $z_{1:T}$ (robot location) were simulated using the initial and transition models, and observations $x_{1:T}$ (sensor readings) were simulated using the emission model. Using the observations, we identified the state using the particle filter algorithm with 100 particles.
 
+```{r}
+timestep <- 100
+num_particles <- 100
+
+emission_transition <- function(timestep, sd){
+  x_current <- vector(length=(timestep+1))
+  x_current[1] <- 0 #just some number for indexing
+  z_current <- vector(length=(timestep+1))
+  z_current[1] <- runif(1,0,100) #intitial model
+  for(i in 2:(timestep+1)){
+    which_mean<-sample(1:3, size = 1)
+    z_current[i] <- rnorm(n=1, mean=z_current[i-1]+which_mean-1, sd=1)
+    x_current[i]<- rnorm(n=1, mean=z_current[i]+which_mean-2, sd=sd)
+  }
+  return(list("obs"=x_current[-1], "states"=z_current[-1]))
+}
+
+obs_states <- emission_transition(timestep, sd=1)
+x_obs <- obs_states$obs
+z_states <- obs_states$states
+
+
+particle_filter <- function(x_obs, num_particles, timestep, sd, correction=TRUE){
+  Z_bar <- matrix(ncol=num_particles, nrow=timestep) #particles -prediction
+  #initialization
+  Z_bar[1,] <- runif(num_particles, 0, 100) #Z0
+  Z <- matrix(ncol=num_particles, nrow=timestep) #particles -correction
+  Z[1,] <- Z_bar[1,]
+  w <- matrix(ncol = num_particles, nrow=timestep) #importance weights
+  w[1,] <- rep(1,num_particles)
+  for(i in 2:timestep){
+    for(j in 1:num_particles){
+      which_mean<-sample(1:3, size = 1)
+      Z_bar[i,j] <- rnorm(n=1, mean=Z[i-1,j]+which_mean-1, sd=1) #transition model
+      w[i,j] <- (dnorm(x_obs[i], Z_bar[i,j], sd)+dnorm(x_obs[i], Z_bar[i,j]-1, sd)+dnorm(x_obs[i], Z_bar[i,j]+1, sd))/3 #emission model
+    }
+    if(correction){
+      Z[i,] <- sample(Z_bar[i,], size=num_particles, replace = TRUE, prob=w[i,])
+    }
+    else{
+      Z[i,] <- Z_bar[i,]
+    }
+  }
+  return(Z)
+}
+
+particles1<-particle_filter(x_obs, num_particles, timestep, sd=1)
+exp_location <- rowMeans(particles1)
+```
+
+```{r, echo=FALSE}
+par(mfrow=c(1,2))
+hist(particles1[1,],freq = FALSE,col = "grey",xlab = "Particles",main="sd=1, t=1")
+abline(v = z_states[1],col="red")
+abline(v = exp_location[1],col="blue")
+# legend("topleft",c("true position","expected, sd=1"),
+#        col = c("red","blue"), lty = c(1, 1), lwd=c(2, 2))
+hist(particles1[25,],freq = FALSE,col = "grey",xlab = "Particles",main="sd=1, t=25")
+abline(v = z_states[25],col="red")
+abline(v = exp_location[25],col="blue")
+
+hist(particles1[75,],freq = FALSE,col = "grey",xlab = "Particles",main="sd=1, t=75")
+abline(v = z_states[75],col="red")
+abline(v = exp_location[75],col="blue")
+
+hist(particles1[timestep,],freq = FALSE,col = "grey",xlab = "Particles",main="sd=1, t=100")
+abline(v = z_states[timestep],col="red")
+abline(v = exp_location[timestep],col="blue")
+
+```
+
+```{r, echo=FALSE}
+plot(x_obs, pch=19, main="sd=1", xlab="Time step", ylab="Position")
+lines(z_states, col="red")
+lines(exp_location, col="blue")
+legend("bottomright",c("observation","true position","expected, sd=1"),
+       col = c("black","red","blue"), lty = c(3, 1, 1), lwd=c(3, 2, 2))
+
+```
+
+
 # Question 2
 
 Question 1 was repeated were standard deviation in the emission model was changed to 5 and then 50.
 
+```{r}
+#sd=5 in emission
+obs_states2 <- emission_transition(timestep, sd=5)
+x_obs2 <- obs_states2$obs
+z_states2 <- obs_states2$states
+particles2 <- particle_filter(x_obs2, num_particles, timestep, sd=5)
+exp_location2 <- rowMeans(particles2)
+
+#sd=50 in emission
+obs_states3 <- emission_transition(timestep, sd = 50)
+x_obs3 <- obs_states3$obs
+z_states3 <- obs_states3$states
+particles3 <- particle_filter(x_obs3, num_particles, timestep, sd=50)
+exp_location3 <- rowMeans(particles3)
+```
+
+```{r, echo=FALSE}
+par(mfrow=c(1,2))
+hist(particles2[1,],freq = FALSE,col = "grey",xlab = "Particles",main="sd=5, t=1")
+abline(v = z_states2[1],col="red")
+abline(v = exp_location2[1],col="blue")
+# legend("topleft",c("true position","expected, sd=1"),
+#        col = c("red","blue"), lty = c(1, 1), lwd=c(2, 2))
+hist(particles2[25,],freq = FALSE,col = "grey",xlab = "Particles",main="sd=5, t=25")
+abline(v = z_states2[25],col="red")
+abline(v = exp_location2[25],col="blue")
+
+hist(particles2[75,],freq = FALSE,col = "grey",xlab = "Particles",main="sd=5, t=75")
+abline(v = z_states2[75],col="red")
+abline(v = exp_location2[75],col="blue")
+
+hist(particles2[timestep,],freq = FALSE,col = "grey",xlab = "Particles",main="sd=5, t=100")
+abline(v = z_states2[timestep],col="red")
+abline(v = exp_location2[timestep],col="blue")
+```
+
+```{r, echo=FALSE}
+plot(x_obs2, pch=19, main="sd=5", xlab="Time step", ylab="Position")
+lines(z_states2, col="red")
+lines(exp_location2, col="blue")
+legend("bottomright",c("observation","true position","expected, sd=5"),
+       col = c("black","red","blue"), lty = c(3, 1, 1), lwd=c(3, 2, 2))
+```
+
+Since the standard deviation has increased, the uncertainty in the observations has also increased. The observations and thus the expected location deviate more from the true position than in Question 1.
+
+```{r, echo=FALSE}
+par(mfrow=c(1,2))
+hist(particles3[1,],freq = FALSE,col = "grey",xlab = "Particles",main="sd=50, t=1")
+abline(v = z_states3[1],col="red")
+abline(v = exp_location3[1],col="blue")
+# legend("topleft",c("true position","expected, sd=1"),
+#        col = c("red","blue"), lty = c(1, 1), lwd=c(2, 2))
+hist(particles3[25,],freq = FALSE,col = "grey",xlab = "Particles",main="sd=50, t=25")
+abline(v = z_states3[25],col="red")
+abline(v = exp_location3[25],col="blue")
+
+hist(particles3[75,],freq = FALSE,col = "grey",xlab = "Particles",main="sd=50, t=75", xlim=c(100,145)) #change limits
+abline(v = z_states3[75],col="red")
+abline(v = exp_location3[75],col="blue")
+
+hist(particles3[timestep,],freq = FALSE,col = "grey",xlab = "Particles",main="sd=50, t=100")
+abline(v = z_states3[timestep],col="red")
+abline(v = exp_location3[timestep],col="blue")
+```
+
+```{r, echo=FALSE}
+plot(x_obs3, pch=19, main="sd=50", xlab="Time step", ylab="Position")
+lines(z_states3, col="red")
+lines(exp_location3, col="blue")
+legend("bottomright",c("observation","true position","expected, sd=50"),
+       col = c("black","red","blue"), lty = c(3, 1, 1), lwd=c(3, 2, 2))
+```
+
+The observations and expected location deviate more from the true position when the standard deviation is 50 than they did when standard devation was 5. This is because $sd=50$ adds even more uncertainty to the observations and thus the expected location than $sd=5$.
+
 # Question 3
 
 Question 1 was repeated without correction, i.e. importance weights were always equal to 1.
+
+```{r}
+particles4 <- particle_filter(x_obs, num_particles, timestep, sd=1, correction = FALSE)
+exp_location4 <- rowMeans(particles4)
+```
+
+```{r, echo=FALSE}
+par(mfrow=c(1,2))
+hist(particles4[1,],freq = FALSE,col = "grey",xlab = "Particles",main="sd=1 no correction, t=1")
+abline(v = z_states[1],col="red")
+abline(v = exp_location4[1],col="blue")
+# legend("topleft",c("true position","expected, sd=1"),
+#        col = c("red","blue"), lty = c(1, 1), lwd=c(2, 2))
+hist(particles4[25,],freq = FALSE,col = "grey",xlab = "Particles",main="sd=1 no correction, t=25")
+abline(v = z_states[25],col="red")
+abline(v = exp_location4[25],col="blue")
+
+hist(particles4[75,],freq = FALSE,col = "grey",xlab = "Particles",main="sd=1 no correction, t=75", xlim = c(50,200)) #change limits
+abline(v = z_states[75],col="red")
+abline(v = exp_location4[75],col="blue")
+
+hist(particles4[timestep,],freq = FALSE,col = "grey",xlab = "Particles",main="sd=1 no correction, t=100")
+abline(v = z_states[timestep],col="red")
+abline(v = exp_location4[timestep],col="blue")
+```
+
+```{r, echo=FALSE}
+plot(x_obs, pch=19, main="sd=1, no correction", xlab="Time step", ylab="Position")
+lines(z_states, col="red")
+lines(exp_location, col="blue")
+lines(exp_location4, col="purple")
+legend("bottomright",c("observation","true position","expected, sd=1","no correction"),
+       col = c("black","red","blue","purple"), lty = c(3, 1, 1, 1), lwd=c(3, 2, 2, 2))
+```
+
+Without correction, the expected location follows a straight line. It resembles a linear regression. Without correction, unlikely particles continues to the next time step. With correction, unlikely particles are less likely to be selected to continue to the next time step and therefore the expected location will deviate less from the true position.
+
 #Appendix
 
 ```{r, ref.label=knitr::all_labels(),echo=TRUE,eval=FALSE}
