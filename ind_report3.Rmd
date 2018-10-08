@@ -30,24 +30,29 @@ For $T=100$ time steps, states $z_{1:T}$ (robot location) were simulated using t
 timestep <- 100
 num_particles <- 100
 
-emission_transition <- function(timestep, sd){
-  x_current <- vector(length=(timestep+1))
-  x_current[1] <- 0 #just some number for indexing
-  z_current <- vector(length=(timestep+1))
-  z_current[1] <- runif(1,0,100) #intitial model
-  for(i in 2:(timestep+1)){
-    which_mean<-sample(1:3, size = 1)
-    z_current[i] <- rnorm(n=1, mean=z_current[i-1]+which_mean-1, sd=1)
-    x_current[i]<- rnorm(n=1, mean=z_current[i]+which_mean-2, sd=sd)
-  }
-  return(list("obs"=x_current[-1], "states"=z_current[-1]))
+transition_model <- function(timestep){
+   z_current <- vector(length=(timestep))
+   z_current[1] <- runif(1,0,100) # initial model
+   for(i in 2:(timestep)){
+     which_mean<-sample(1:3, size = 1)
+     z_current[i] <- rnorm(n=1, mean=z_current[i-1]+which_mean-1, sd=1)
+   }
+   z_current
 }
+```
 
-obs_states <- emission_transition(timestep, sd=1)
-x_obs <- obs_states$obs
-z_states <- obs_states$states
+```{r}
+emission_model <- function(timestep, z_states, sd){
+   x_current <- vector(length=(timestep))
+   for(i in 1:(timestep)){
+     which_mean<-sample(1:3, size = 1)
+     x_current[i]<- rnorm(n=1, mean=z_states[i]+which_mean-2, sd=sd)
+   }
+   x_current
+}
+```
 
-
+```{r}
 particle_filter <- function(x_obs, num_particles, timestep, sd, correction=TRUE){
   Z_bar <- matrix(ncol=num_particles, nrow=timestep) #particles -prediction
   #initialization
@@ -71,34 +76,44 @@ particle_filter <- function(x_obs, num_particles, timestep, sd, correction=TRUE)
   }
   return(Z)
 }
+```
 
+```{r, echo=FALSE}
+z_states <- transition_model(timestep)
+x_obs <- emission_model(timestep, z_states, sd = 1)
 particles1<-particle_filter(x_obs, num_particles, timestep, sd=1)
 exp_location <- rowMeans(particles1)
 ```
 
 ```{r, echo=FALSE}
-par(mfrow=c(1,2))
-hist(particles1[1,],freq = FALSE,col = "grey",xlab = "Particles",main="sd=1, t=1")
+par(mfrow=c(1,2), oma = c(1, 1, 2, 1))
+hist(particles1[1,],freq = FALSE,col = "grey",xlab = "Particles",main="t=1")
 abline(v = z_states[1],col="red")
 abline(v = exp_location[1],col="blue")
-# legend("topleft",c("true position","expected, sd=1"),
-#        col = c("red","blue"), lty = c(1, 1), lwd=c(2, 2))
-hist(particles1[25,],freq = FALSE,col = "grey",xlab = "Particles",main="sd=1, t=25")
+
+hist(particles1[25,],freq = FALSE,col = "grey",xlab = "Particles",main="t=25")
 abline(v = z_states[25],col="red")
 abline(v = exp_location[25],col="blue")
 
-hist(particles1[75,],freq = FALSE,col = "grey",xlab = "Particles",main="sd=1, t=75")
+mtext("Distribution of particles", side = 3, line = 0, outer = TRUE, font = 2, cex=1.3)
+mtext("sd=1", side = 3, line = -1, outer = TRUE, font = 2, cex=1.1)
+
+hist(particles1[75,],freq = FALSE,col = "grey",xlab = "Particles",main="t=75")
 abline(v = z_states[75],col="red")
 abline(v = exp_location[75],col="blue")
 
-hist(particles1[timestep,],freq = FALSE,col = "grey",xlab = "Particles",main="sd=1, t=100")
+hist(particles1[timestep,],freq = FALSE,col = "grey",xlab = "Particles",main="t=100")
 abline(v = z_states[timestep],col="red")
 abline(v = exp_location[timestep],col="blue")
 
+par(fig = c(0, 1, 0, 1), oma = c(0, 0, 0, 0), mar = c(0, 0, 0, 0), new = TRUE)
+plot(0, 0, type = "n", bty = "n", xaxt = "n", yaxt = "n")
+legend("top",c("true position","expected location"),
+        col = c("red","blue"), lty = c(1, 1), lwd=c(2, 2), xpd=TRUE)
 ```
 
 ```{r, echo=FALSE}
-plot(x_obs, pch=19, main="sd=1", xlab="Time step", ylab="Position")
+plot(x_obs, pch=19, main="Path of robot, sd=1", xlab="Time step", ylab="Position")
 lines(z_states, col="red")
 lines(exp_location, col="blue")
 legend("bottomright",c("observation","true position","expected, sd=1"),
@@ -111,45 +126,48 @@ legend("bottomright",c("observation","true position","expected, sd=1"),
 
 Question 1 was repeated were standard deviation in the emission model was changed to 5 and then 50.
 
-```{r}
+```{r, echo=FALSE}
 #sd=5 in emission
-obs_states2 <- emission_transition(timestep, sd=5)
-x_obs2 <- obs_states2$obs
-z_states2 <- obs_states2$states
+x_obs2 <- emission_model(timestep, z_states, sd = 5)
 particles2 <- particle_filter(x_obs2, num_particles, timestep, sd=5)
 exp_location2 <- rowMeans(particles2)
 
 #sd=50 in emission
-obs_states3 <- emission_transition(timestep, sd = 50)
-x_obs3 <- obs_states3$obs
-z_states3 <- obs_states3$states
+x_obs3 <- emission_model(timestep, z_states, sd = 50)
 particles3 <- particle_filter(x_obs3, num_particles, timestep, sd=50)
 exp_location3 <- rowMeans(particles3)
 ```
 
 ```{r, echo=FALSE}
-par(mfrow=c(1,2))
-hist(particles2[1,],freq = FALSE,col = "grey",xlab = "Particles",main="sd=5, t=1")
-abline(v = z_states2[1],col="red")
+par(mfrow=c(1,2), oma = c(1, 1, 2, 1))
+hist(particles2[1,],freq = FALSE,col = "grey",xlab = "Particles",main="t=1")
+abline(v = z_states[1],col="red")
 abline(v = exp_location2[1],col="blue")
-# legend("topleft",c("true position","expected, sd=1"),
-#        col = c("red","blue"), lty = c(1, 1), lwd=c(2, 2))
-hist(particles2[25,],freq = FALSE,col = "grey",xlab = "Particles",main="sd=5, t=25")
-abline(v = z_states2[25],col="red")
+
+hist(particles2[25,],freq = FALSE,col = "grey",xlab = "Particles",main="t=25")
+abline(v = z_states[25],col="red")
 abline(v = exp_location2[25],col="blue")
 
-hist(particles2[75,],freq = FALSE,col = "grey",xlab = "Particles",main="sd=5, t=75")
-abline(v = z_states2[75],col="red")
+mtext("Distribution of particles", side = 3, line = 0, outer = TRUE, font = 2, cex=1.3)
+mtext("sd=5", side = 3, line = -1, outer = TRUE, font = 2, cex=1.1)
+
+hist(particles2[75,],freq = FALSE,col = "grey",xlab = "Particles",main="t=75")
+abline(v = z_states[75],col="red")
 abline(v = exp_location2[75],col="blue")
 
-hist(particles2[timestep,],freq = FALSE,col = "grey",xlab = "Particles",main="sd=5, t=100")
-abline(v = z_states2[timestep],col="red")
+hist(particles2[timestep,],freq = FALSE,col = "grey",xlab = "Particles",main="t=100")
+abline(v = z_states[timestep],col="red")
 abline(v = exp_location2[timestep],col="blue")
+
+par(fig = c(0, 1, 0, 1), oma = c(0, 0, 0, 0), mar = c(0, 0, 0, 0), new = TRUE)
+plot(0, 0, type = "n", bty = "n", xaxt = "n", yaxt = "n")
+legend("top",c("true position","expected location"),
+        col = c("red","blue"), lty = c(1, 1), lwd=c(2, 2), xpd=TRUE)
 ```
 
 ```{r, echo=FALSE}
-plot(x_obs2, pch=19, main="sd=5", xlab="Time step", ylab="Position")
-lines(z_states2, col="red")
+plot(x_obs2, pch=19, main="Path of robot, sd=5", xlab="Time step", ylab="Position")
+lines(z_states, col="red")
 lines(exp_location2, col="blue")
 legend("bottomright",c("observation","true position","expected, sd=5"),
        col = c("black","red","blue"), lty = c(3, 1, 1), lwd=c(3, 2, 2))
@@ -158,28 +176,35 @@ legend("bottomright",c("observation","true position","expected, sd=5"),
 Since the standard deviation has increased, the uncertainty in the observations has also increased. The observations and thus the expected location deviate more from the true position than in Question 1.
 
 ```{r, echo=FALSE}
-par(mfrow=c(1,2))
-hist(particles3[1,],freq = FALSE,col = "grey",xlab = "Particles",main="sd=50, t=1")
-abline(v = z_states3[1],col="red")
+par(mfrow=c(1,2), oma = c(1, 1, 2, 1))
+hist(particles3[1,],freq = FALSE,col = "grey",xlab = "Particles",main="t=1")
+abline(v = z_states[1],col="red")
 abline(v = exp_location3[1],col="blue")
-# legend("topleft",c("true position","expected, sd=1"),
-#        col = c("red","blue"), lty = c(1, 1), lwd=c(2, 2))
-hist(particles3[25,],freq = FALSE,col = "grey",xlab = "Particles",main="sd=50, t=25")
-abline(v = z_states3[25],col="red")
+
+hist(particles3[25,],freq = FALSE,col = "grey",xlab = "Particles",main="t=25")
+abline(v = z_states[25],col="red")
 abline(v = exp_location3[25],col="blue")
 
-hist(particles3[75,],freq = FALSE,col = "grey",xlab = "Particles",main="sd=50, t=75", xlim=c(100,145)) #change limits
-abline(v = z_states3[75],col="red")
+mtext("Distribution of particles", side = 3, line = 0, outer = TRUE, font = 2, cex=1.3)
+mtext("sd=50", side = 3, line = -1, outer = TRUE, font = 2, cex=1.1)
+
+hist(particles3[75,],freq = FALSE,col = "grey",xlab = "Particles",main="t=75") #change limits
+abline(v = z_states[75],col="red")
 abline(v = exp_location3[75],col="blue")
 
-hist(particles3[timestep,],freq = FALSE,col = "grey",xlab = "Particles",main="sd=50, t=100")
-abline(v = z_states3[timestep],col="red")
+hist(particles3[timestep,],freq = FALSE,col = "grey",xlab = "Particles",main="t=100")
+abline(v = z_states[timestep],col="red")
 abline(v = exp_location3[timestep],col="blue")
+
+par(fig = c(0, 1, 0, 1), oma = c(0, 0, 0, 0), mar = c(0, 0, 0, 0), new = TRUE)
+plot(0, 0, type = "n", bty = "n", xaxt = "n", yaxt = "n")
+legend("top",c("true position","expected location"),
+        col = c("red","blue"), lty = c(1, 1), lwd=c(2, 2), xpd=TRUE)
 ```
 
 ```{r, echo=FALSE}
-plot(x_obs3, pch=19, main="sd=50", xlab="Time step", ylab="Position")
-lines(z_states3, col="red")
+plot(x_obs3, pch=19, main="Path of robot, sd=50", xlab="Time step", ylab="Position")
+lines(z_states, col="red")
 lines(exp_location3, col="blue")
 legend("bottomright",c("observation","true position","expected, sd=50"),
        col = c("black","red","blue"), lty = c(3, 1, 1), lwd=c(3, 2, 2))
@@ -191,33 +216,41 @@ The observations and expected location deviate more from the true position when 
 
 Question 1 was repeated without correction, i.e. importance weights were always equal to 1.
 
-```{r}
+```{r, echo=FALSE}
 particles4 <- particle_filter(x_obs, num_particles, timestep, sd=1, correction = FALSE)
 exp_location4 <- rowMeans(particles4)
 ```
 
 ```{r, echo=FALSE}
-par(mfrow=c(1,2))
-hist(particles4[1,],freq = FALSE,col = "grey",xlab = "Particles",main="sd=1 no correction, t=1")
+par(mfrow=c(1,2),oma = c(1, 1, 2, 1))
+hist(particles4[1,],freq = FALSE,col = "grey",xlab = "Particles",main="t=1")
 abline(v = z_states[1],col="red")
 abline(v = exp_location4[1],col="blue")
-# legend("topleft",c("true position","expected, sd=1"),
-#        col = c("red","blue"), lty = c(1, 1), lwd=c(2, 2))
-hist(particles4[25,],freq = FALSE,col = "grey",xlab = "Particles",main="sd=1 no correction, t=25")
+
+hist(particles4[25,],freq = FALSE,col = "grey",xlab = "Particles",main="t=25")
 abline(v = z_states[25],col="red")
 abline(v = exp_location4[25],col="blue")
 
-hist(particles4[75,],freq = FALSE,col = "grey",xlab = "Particles",main="sd=1 no correction, t=75", xlim = c(50,200)) #change limits
+mtext("Distribution of particles", side = 3, line = 0, outer = TRUE, font = 2, cex=1.3)
+mtext("sd=1 & no correction", side = 3, line = -1, outer = TRUE, font = 2, cex=1.1)
+
+hist(particles4[75,],freq = FALSE,col = "grey",xlab = "Particles",main="t=75", xlim = c(50,200)) #change limits
 abline(v = z_states[75],col="red")
 abline(v = exp_location4[75],col="blue")
 
-hist(particles4[timestep,],freq = FALSE,col = "grey",xlab = "Particles",main="sd=1 no correction, t=100")
+hist(particles4[timestep,],freq = FALSE,col = "grey",xlab = "Particles",main="t=100")
 abline(v = z_states[timestep],col="red")
 abline(v = exp_location4[timestep],col="blue")
+
+par(fig = c(0, 1, 0, 1), oma = c(0, 0, 0, 0), mar = c(0, 0, 0, 0), new = TRUE)
+plot(0, 0, type = "n", bty = "n", xaxt = "n", yaxt = "n")
+legend("top",c("true position","expected location"),
+        col = c("red","blue"), lty = c(1, 1), lwd=c(2, 2), xpd=TRUE)
+
 ```
 
 ```{r, echo=FALSE}
-plot(x_obs, pch=19, main="sd=1, no correction", xlab="Time step", ylab="Position")
+plot(x_obs, pch=19, main="Path of robot, sd=1 & no correction", xlab="Time step", ylab="Position")
 lines(z_states, col="red")
 lines(exp_location, col="blue")
 lines(exp_location4, col="purple")
