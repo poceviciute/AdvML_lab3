@@ -114,7 +114,7 @@ results_q1 <- particles(my_SSM$observations,100,100)
 exp_loc_q1 <- colMeans(results_q1$Zt)
 ```
 
-We chose time points $t=$1, 35, 75, and 100 for which we plot the distribution of the particles (histograms), and indicate on them what is the true value of the $z_t$ and the expected value at that particular time step.
+We chose time points $t=$ 1, 35, 75, and 100 for which we plot the distribution of the particles (histograms), and indicate on them what is the true value of the $z_t$ and the expected value at that particular time step.
 
 ```{r, echo=FALSE}
 par(mfrow=c(1,2), oma = c(1, 1, 2, 1))
