@@ -2,7 +2,9 @@
 title: "Lab3 SSM"
 author: "Milda Poceviciute"
 date: "4 October 2018"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -80,7 +82,7 @@ particles <- function(Obs, M,Iter, sdX=1, correction=TRUE){
             #Zt_bar[m,t] <- (rnorm(1,mean=Zt[m,t-1],sd=1)+rnorm(1,mean=(Zt[m,t-1]+1),sd=1)+rnorm(1,mean=(Zt[m,t-1]+2),sd=1))/3
             Zt_bar[m,t] <- sampleMix(mean1=Zt[m,t-1],mean2=(Zt[m,t-1]+1),mean3=(Zt[m,t-1]+2),sdX=1)
             #Calculate weights
-            wt[m,t] <- (dnorm(Xt[t],mean=Zt_bar[m,t],sd=sdX)+dnorm(Xt[t],mean=(Zt_bar[m,t]-1),sd=sdX)+dnorm(Xt[t],mean=(Zt_bar[m,t]+sdX),sd=1))/3
+            wt[m,t] <- (dnorm(Xt[t],mean=Zt_bar[m,t],sd=sdX)+dnorm(Xt[t],mean=(Zt_bar[m,t]-1),sd=sdX)+dnorm(Xt[t],mean=(Zt_bar[m,t]+1),sd=sdX))/3
         }
         # Correction
         if (correction){
@@ -107,31 +109,36 @@ my_SSM <- create_SSM(runif(1,0,100),100)
 results_q1 <- particles(my_SSM$observations,100,100)
 ```
 
-I chose time points 1, 35, 75, and 100 for which I plot the distribution of the particles (a histogram), and I indicate on them what is the true value of the $z_t$ at that particular time step.
+I chose time points 1, 35, 75, and 100 for which I plot the distribution of the particles (a histogram), and I indicate on them what is the true value of the $z_t$ (the red line) and what is the expected value by the particle filter (the blue line) at that particular time step.
 
 ```{r, echo=FALSE}
-hist(results_q1$Zt[,1],freq = FALSE,xlab = "Zt",main="Distribution of particles, t=1")
+par(mfrow=c(1,2), oma = c(1, 1, 2, 1))
+hist(results_q1$Zt[,1],freq = FALSE,xlab = "Zt",main="t=1")
 abline(v=my_SSM$sates[1],col="red")
-legend("topright",c("True position"),
-       col = c("red"),lty = c(1))
+abline(v=mean(results_q1$Zt[,1]),col="blue")
 
-hist(results_q1$Zt[,35],freq = FALSE,xlab = "Zt",main="Distribution of particles, t=35")
+hist(results_q1$Zt[,35],freq = FALSE,xlab = "Zt",main="t=35")
 abline(v=my_SSM$sates[35],col="red")
-legend("topright",c("True position"),
-       col = c("red"),lty = c(1))
+abline(v=mean(results_q1$Zt[,35]),col="blue")
 
-hist(results_q1$Zt[,75],freq = FALSE,xlab = "Zt",main="Distribution of particles, t=75")
+mtext("Distribution of particles", side = 3, line = 0, outer = TRUE, font = 2, cex=1.3)
+mtext("sd=1", side = 3, line = -1, outer = TRUE, font = 2, cex=1.1)
+
+hist(results_q1$Zt[,75],freq = FALSE,xlab = "Zt",main="t=75")
 abline(v=my_SSM$sates[75],col="red")
-legend("topright",c("True position"),
-       col = c("red"),lty = c(1))
+abline(v=mean(results_q1$Zt[,75]),col="blue")
 
-hist(results_q1$Zt[,100],freq = FALSE,xlab = "Zt",main="Distribution of particles, t=100")
+hist(results_q1$Zt[,100],freq = FALSE,xlab = "Zt",main="t=100")
 abline(v=my_SSM$sates[100],col="red")
-legend("topright",c("True position"),
-       col = c("red"),lty = c(1))
+abline(v=mean(results_q1$Zt[,100]),col="blue")
+
+par(fig = c(0, 1, 0, 1), oma = c(0, 0, 0, 0), mar = c(0, 0, 0, 0), new = TRUE)
+plot(0, 0, type = "n", bty = "n", xaxt = "n", yaxt = "n")
+legend("top",c("true location","expected location"),
+        col = c("red","blue"), lty = c(1, 1), lwd=c(2, 2), xpd=TRUE)
 ```
 
-From the histograms, I conclude that the particle algorithm worked pretty well when the standard deviation was 1. In all four plots, the red line falls on one of the highest bars: this indicates that the algorithm quite accurately predicted the robots location (with a reasonable error).
+From the histograms above we can see that the algorithm converges pretty well: the spread of the distribution decreases from 100 to below 20 in the last time step. This indicates that the algortihm is more certain about the position of the robot. In all four plots the true position (the red line) is pretty close to the expected position based on the mean of the particles distribution (the blue line).
 
 
 ## Question 2
@@ -158,93 +165,122 @@ results_q2b <- particles(my_SSM_2b$observations,100,100,sdX = 50)
 ```{r, echo=FALSE}
 
 # Plot results from 2a, sd =5
-hist(results_q2a$Zt[,1],freq = FALSE,xlab = "Zt",main="Distribution of particles, t=1, sd=5",
-     xlim=c(min(min(results_q2a$Zt[,1],my_SSM_2a$sates[1]))-2,max(max(results_q2a$Zt[,1]),my_SSM_2a$sates[1])+2))
+par(mfrow=c(1,2), oma = c(1, 1, 2, 1))
+hist(results_q2a$Zt[,1],freq = FALSE,xlab = "Zt",main="t=1",
+     xlim=c(min(min(results_q2a$Zt[,1],my_SSM_2a$sates[1]))-2,
+            max(max(results_q2a$Zt[,1]),my_SSM_2a$sates[1])+2))
 abline(v=my_SSM_2a$sates[1],col="red")
-legend("topright",c("True position"),
-       col = c("red"),lty = c(1))
+abline(v=mean(results_q2a$Zt[,1]),col="blue")
 
-hist(results_q2a$Zt[,35],freq = FALSE,xlab = "Zt",main="Distribution of particles, t=35, sd=5",
-     xlim=c(min(min(results_q2a$Zt[,35],my_SSM_2a$sates[35]))-2,max(max(results_q2a$Zt[,35]),my_SSM_2a$sates[35])+2))
+hist(results_q2a$Zt[,35],freq = FALSE,xlab = "Zt",main="t=35",
+     xlim=c(min(min(results_q2a$Zt[,35],my_SSM_2a$sates[35]))-2,
+            max(max(results_q2a$Zt[,35]),my_SSM_2a$sates[35])+2))
 abline(v=my_SSM_2a$sates[35],col="red")
-legend("topright",c("True position"),
-       col = c("red"),lty = c(1))
+abline(v=mean(results_q2a$Zt[,35]),col="blue")
 
-hist(results_q2a$Zt[,75],freq = FALSE,xlab = "Zt",main="Distribution of particles, t=75, sd=5",
-     xlim=c(min(min(results_q2a$Zt[,75],my_SSM_2a$sates[75]))-2,max(max(results_q2a$Zt[,75]),my_SSM_2a$sates[75])+2))
+mtext("Distribution of particles", side = 3, line = 0, outer = TRUE, font = 2, cex=1.3)
+mtext("sd=5", side = 3, line = -1, outer = TRUE, font = 2, cex=1.1)
+
+hist(results_q2a$Zt[,75],freq = FALSE,xlab = "Zt",main="t=75",
+     xlim=c(min(min(results_q2a$Zt[,75],my_SSM_2a$sates[75]))-2,
+            max(max(results_q2a$Zt[,75]),my_SSM_2a$sates[75])+2))
 abline(v=my_SSM_2a$sates[75],col="red")
-legend("topright",c("True position"),
-       col = c("red"),lty = c(1))
+abline(v=mean(results_q2a$Zt[,75]),col="blue")
 
-hist(results_q2a$Zt[,100],freq = FALSE,xlab = "Zt",main="Distribution of particles, t=100, sd=5",
-     xlim=c(min(min(results_q2a$Zt[,100],my_SSM_2a$sates[100]))-2,max(max(results_q2a$Zt[,100]),my_SSM_2a$sates[100])+2))
+hist(results_q2a$Zt[,100],freq = FALSE,xlab = "Zt",main="t=100",
+     xlim=c(min(min(results_q2a$Zt[,100],my_SSM_2a$sates[100]))-2,
+            max(max(results_q2a$Zt[,100]),my_SSM_2a$sates[100])+2))
 abline(v=my_SSM_2a$sates[100],col="red")
-legend("topright",c("True position"),
-       col = c("red"),lty = c(1))
+abline(v=mean(results_q2a$Zt[,100]),col="blue")
 
+par(fig = c(0, 1, 0, 1), oma = c(0, 0, 0, 0), mar = c(0, 0, 0, 0), new = TRUE)
+plot(0, 0, type = "n", bty = "n", xaxt = "n", yaxt = "n")
+legend("top",c("true location","expected location"),
+        col = c("red","blue"), lty = c(1, 1), lwd=c(2, 2), xpd=TRUE)
 ```
 
-The histogram plots above show the distribution of the particles when standard deviation is 5 (for time steps 1, 35, 75, and 100). This time the algorithm possibly performed worse: at time step 100 the true location of the robot falls into one of the shortest bars of the distribution. This indicates that the algorithm predicted quite a low probability that $z_100$ is the true value. However, the overall performance cannot be deduced by looking at only 4 time points: each new step introduces some new uncertainty, and the results at it might be worse then the results from the previous time step.
+The histogram plots above show the distribution of the particles when standard deviation is 5 (for time steps 1, 35, 75, and 100). This time the algorithm still converged, but it possibly performed worse. Even though the spread of the distribution is quite narrow at the time step 100, the prediction of the robot's location is further from the true location. However, the overall performance cannot be deduced by looking at only 4 time points: each new step introduces some new uncertainty, and the results at it might be worse then the results from the previous time step. In a comparison section I use some more plots to draw better conclusions.
 
 
 ```{r, echo=FALSE}
 
 # Plot results from 2b, sd =50
-hist(results_q2b$Zt[,1],freq = FALSE,xlab = "Zt",main="Distribution of particles, t=1, sd=50",xlim=c(min(min(results_q2b$Zt[,1],my_SSM_2b$sates[1]))-2,max(max(results_q2b$Zt[,1]),my_SSM_2b$sates[1])+2))
+par(mfrow=c(1,2), oma = c(1, 1, 2, 1))
+hist(results_q2b$Zt[,1],freq = FALSE,xlab = "Zt",main="t=1",xlim=c(min(min(results_q2b$Zt[,1],my_SSM_2b$sates[1]))-2,
+              max(max(results_q2b$Zt[,1]),my_SSM_2b$sates[1])+2))
 abline(v=my_SSM_2b$sates[1],col="red")
-legend("topright",c("True position"),
-       col = c("red"),lty = c(1))
+abline(v=mean(results_q2b$Zt[,1]),col="blue")
 
-
-hist(results_q2b$Zt[,35],freq = FALSE,xlab = "Zt",main="Distribution of particles, t=35, sd=50",
-     xlim=c(min(min(results_q2b$Zt[,35],my_SSM_2b$sates[35]))-2,max(max(results_q2b$Zt[,35]),my_SSM_2b$sates[35])+2))
+hist(results_q2b$Zt[,35],freq = FALSE,xlab = "Zt",main="t=35",
+     xlim=c(min(min(results_q2b$Zt[,35],my_SSM_2b$sates[35]))-2,
+            max(max(results_q2b$Zt[,35]),my_SSM_2b$sates[35])+2))
 abline(v=my_SSM_2b$sates[35],col="red")
-legend("topright",c("True position"),
-       col = c("red"),lty = c(1))
+abline(v=mean(results_q2b$Zt[,35]),col="blue")
 
+mtext("Distribution of particles", side = 3, line = 0, outer = TRUE, font = 2, cex=1.3)
+mtext("sd=50", side = 3, line = -1, outer = TRUE, font = 2, cex=1.1)
 
-hist(results_q2b$Zt[,75],freq = FALSE,xlab = "Zt",main="Distribution of particles, t=75, sd=50",
-     xlim=c(min(min(results_q2b$Zt[,75],my_SSM_2b$sates[75]))-2,max(max(results_q2b$Zt[,75]),my_SSM_2b$sates[75])+2))
+hist(results_q2b$Zt[,75],freq = FALSE,xlab = "Zt",main="t=75",
+     xlim=c(min(min(results_q2b$Zt[,75],my_SSM_2b$sates[75]))-2,
+            max(max(results_q2b$Zt[,75]),my_SSM_2b$sates[75])+2))
 abline(v=my_SSM_2b$sates[75],col="red")
-legend("topright",c("True position"),
-       col = c("red"),lty = c(1))
+abline(v=mean(results_q2b$Zt[,75]),col="blue")
 
-
-hist(results_q2b$Zt[,100],freq = FALSE,xlab = "Zt",main="Distribution of particles, t=100, sd=50",
-     xlim=c(min(min(results_q2b$Zt[,100],my_SSM_2b$sates[100]))-2,max(max(results_q2b$Zt[,100]),my_SSM_2b$sates[100])+2))
+hist(results_q2b$Zt[,100],freq = FALSE,xlab = "Zt",main="t=100",
+     xlim=c(min(min(results_q2b$Zt[,100],my_SSM_2b$sates[100]))-2,
+            max(max(results_q2b$Zt[,100]),my_SSM_2b$sates[100])+2))
 abline(v=my_SSM_2b$sates[100],col="red")
-legend("topright",c("True position"),
-       col = c("red"),lty = c(1))
+abline(v=mean(results_q2b$Zt[,100]),col="blue")
+
+par(fig = c(0, 1, 0, 1), oma = c(0, 0, 0, 0), mar = c(0, 0, 0, 0), new = TRUE)
+plot(0, 0, type = "n", bty = "n", xaxt = "n", yaxt = "n")
+legend("top",c("true position","expected location"),
+        col = c("red","blue"), lty = c(1, 1), lwd=c(2, 2), xpd=TRUE)
 
 ```
 
-The histogram plots above show the distribution of the particles when standard deviation is 50 (for time steps 1, 35, 75, and 100). This time the true location of the robot for time steps 35, 75, and 100 falls into one of the shortest bars of the distribution of that time step. This indicates that the algorithm predicted quite a low probability that $z_t$ is the true value. It is reasonable to assume that the performance of the particle filter worsens as the standard deviation of the observations from the true states is increased: there is more uncertainty involved.
+The histogram plots above show the distribution of the particles when standard deviation is 50 (for time steps 1, 35, 75, and 100). This time the spread of the particle distribution is much wider than in the previous cases. The increased standard deviation in the emission model adds more noise to the data, hence the algortihm is less sure about the actual location of the robot. However, the algorithm still converged and predicted reasonable values for the location of the robot. 
 
 ## Question 3
 
 ```{r, echo=FALSE}
 # Filter particles
 results_q3 <- particles(my_SSM$observations,100,100,correction = FALSE)
-par(mfrow=c(1,2))
+
 
 hist(results_q3$Zt[,1],freq = FALSE,xlab = "Zt",main="Distribution of particles, t=1")
 abline(v=my_SSM$sates[1],col="red")
+abline(v=mean(results_q3$Zt[,1]),col="blue")
+legend("topright",c("True position","Expected"),
+       col = c("red","blue"),lty = c(1,1))
 
 
 hist(results_q3$Zt[,35],freq = FALSE,xlab = "Zt",main="Distribution of particles, t=35")
 abline(v=my_SSM$sates[35],col="red")
+abline(v=mean(results_q3$Zt[,35]),col="blue")
+legend("topright",c("True position","Expected"),
+       col = c("red","blue"),lty = c(1,1))
+
 
 
 hist(results_q3$Zt[,75],freq = FALSE,xlab = "Zt",main="Distribution of particles, t=75")
 abline(v=my_SSM$sates[75],col="red")
+abline(v=mean(results_q3$Zt[,75]),col="blue")
+legend("topright",c("True position","Expected"),
+       col = c("red","blue"),lty = c(1,1))
+
 
 
 hist(results_q3$Zt[,100],freq = FALSE,xlab = "Zt",main="Distribution of particles, t=100")
 abline(v=my_SSM$sates[100],col="red")
+abline(v=mean(results_q3$Zt[,100]),col="blue")
+legend("topright",c("True position","Expected"),
+       col = c("red","blue"),lty = c(1,1))
+
 
 ```
 
-From the distribution plots, it seems that the particle filtering algorithm without correction step did not performed much worse than for the same model with correction. However, as mentioned above, some more plots are needed in order to see the full picture (the full comparison is done below).
+When correction step is missed, the algortihm prediction is no longer based on the observations of the sensors. This means that the algorithm just uses the transition model to predict what is the likely outcomes after the initial $z_t$ values. Therefore, the spread of the distribution is very wide: this indicates that a lot of uncertainty is involved. 
 
 ## Comparison of all methods
 
@@ -300,9 +336,9 @@ legend("bottomright",c("observations","true position","expected, no corr"),
 
 ```
 
-It seems that the model worked best when emission had standard deviation of 1 and the correction step was done. The performance of the particle filter decreased as the standard deviation in the emission model was increased. This is logical, as the more observations deviate from the true location, the more difficult it is to predict correctly what was the true location.
+All algorithms exept the one without the correction, converged to the true value of the $z_t$. As expected, the lower the standard deviation is in the emission model, the faster the particle filter converges. The performance of the particle filter decreased as the standard deviation in the emission model was increased. This is logical, as the more observations deviate from the true location, the more difficult it is to predict correctly what was the true location.
 
-When the correction step is skipped in the particle filter, it seems that the prediction is highly influenced by the random choice of the first state value, and then the consequent time steps is just a gradual increase from that (as this is how the transition model is done). It does not update the predicted $z_t$ values by how likely they are for each observation $x_t$. Hence it does capture the overall tendency (which is due to the transition model), but it misses the fluctuations in the location change.
+When the correction step is skipped in the particle filter, it seems that the prediction is highly influenced by the random choice of the first state value, and then the consequent time steps is just a gradual increase (in most cases) from that. It does not update the predicted $z_t$ values by how likely they are for each observation $x_t$. Hence it does include the information about the sensor readings, and just models the possible outcomes from the initial $z_t$ and the transition model application multiple times.
 
 #Appendix
 

@@ -3,6 +3,7 @@ title: "AML_Lab3_Group8"
 author: "Hyungyum Kim, Milda Poceviciute, Boxi Zhang, Fanny Karelius"
 date: "2018 -  10 - 8"
 output:
+  pdf_document: default
   html_document:
     df_print: paged
 ---
@@ -83,7 +84,7 @@ particles <- function(Obs, M,Iter, sdX=1, correction=TRUE){
             #Calculate weights
             wt[m,t] <- (dnorm(Xt[t],mean=Zt_bar[m,t],sd=sdX)+
                         dnorm(Xt[t],mean=(Zt_bar[m,t]-1),sd=sdX)+
-                        dnorm(Xt[t],mean=(Zt_bar[m,t]+sdX),sd=1))/3
+                        dnorm(Xt[t],mean=(Zt_bar[m,t]+1),sd=sdX))/3
         }
         # Correction
         if (correction){
@@ -142,7 +143,8 @@ legend("top",c("true position","expected location"),
         col = c("red","blue"), lty = c(1, 1), lwd=c(2, 2), xpd=TRUE)
 ```
 
-From the histograms, we conclude that the particle algorithm worked pretty well when the standard deviation was 1. In all four plots, the red line falls on one of the highest bars: this indicates that the algorithm quite accurately predicted the robots location (with a reasonable error).
+From the histograms, we conclude that the particle algorithm worked pretty well when the standard deviation was 1. We can see that the algorithm converged, hence the spread of the distribution deacreased significantly. In all four plots, the red line falls on a region very close to the blue line: this indicates that the expected position by the particle algortihm is very close to the true position at that time step.
+
 
 ```{r}
 plot(my_SSM$observations, pch=20, ylab="Position", xlab="Time step", 
@@ -153,7 +155,7 @@ legend("bottomright",c("observations","true position","expected, sd=1"),
        col = c("black","red","blue"), lty = c(3,1, 1), lwd=c(3,rep(2,2)))
 ```
 
-The plot above shows the average of particles in each time step, the corresponding actual state and observations. We can see that the true position and predicted positions are very close to each other, so the prediction seems to be very accurate.
+The plot above shows the average of particles in each time step, the corresponding actual state and observations. We conclude that algortihm converged pretty fast: after a few time steps, the true position and predicted positions become very close to each other, with quite small fluctuations in the distance between them. Hence, the prediction seems to be very accurate.
 
 ## Question 2
 
@@ -217,7 +219,7 @@ legend("top",c("true position","expected location"),
         col = c("red","blue"), lty = c(1, 1), lwd=c(2, 2), xpd=TRUE)
 ```
 
-The histogram plots above show the distribution of the particles when standard deviation is 5 (for time steps 1, 35, 75, and 100). This time the algorithm performed worse: at time step 100 the true location of the robot falls into one of the shortest bars of the distribution. This indicates that the algorithm predicted a quite low probability that $z_100$ is the true value. However, the overall performance cannot be deduced by looking at only 4 time points: each new step introduces some new uncertainty, and the results at it might be worse then the results from the previous time step.
+The histogram plots above show the distribution of the particles when standard deviation is 5 (for time steps 1, 35, 75, and 100). This time the algorithm performed worse: the distance between the true position and expected location has increased. In general, the spread of the distribution has increased: this means that more uncertainty has been introduced to the predictions. However, the overall performance cannot be deduced by looking at only 4 time points: each new step introduces some new uncertainty, and the results at it might be worse then the results from the previous time step.
 
 
 ```{r, echo=FALSE}
@@ -256,7 +258,7 @@ legend("top",c("true position","expected location"),
         col = c("red","blue"), lty = c(1, 1), lwd=c(2, 2), xpd=TRUE)
 ```
 
-The histogram plots above show the distribution of the particles when standard deviation is 50 (for time steps 1, 35, 75, and 100). This time the true location of the robot for time steps 35, 75, and 100 falls into one of the shortest bars of the distribution of that time step. This indicates that the algorithm predicted a quite low probability that $z_t$ is the true value. It is reasonable to assume that the performance of the particle filter worsens as the standard deviation of the observations from the true states is increased: there is more uncertainty involved.
+The histogram plots above show the distribution of the particles when standard deviation is 50 (for time steps 1, 35, 75, and 100). This time the spread of distribution is much wider, and the predicted location is not always close to the true position. It is reasonable to assume that the performance of the particle filter worsens as the standard deviation of the observations from the true states is increased: there is more uncertainty involved.
 
 ```{r}
 plot(my_SSM_2a$observations, pch=20, ylab="Position", xlab="Time step", 
@@ -274,7 +276,7 @@ legend("bottomright",c("observations","true position","expected, sd=50"),
        col = c("black","red","blue"), lty = c(3,1, 1), lwd=c(3,rep(2,2)))
 ```
 
-From the plots above, the observations and expected location deviate more from the true position when the standard deviation is 50 than they did when standard deviation was 5. This is because $sd=50$ adds even more uncertainty to the observations and thus the expected location than $sd=5$.
+From the plots above, we see that the particle algorihtm with $sd=50$ converges much slower than in the previous cases. Also, the observations and expected location deviate more from the true position than they did when standard deviation was 5. This is because $sd=50$ adds even more uncertainty to the observations and thus the expected location than $sd=5$.
 
 ## Question 3
 
@@ -325,7 +327,7 @@ legend("bottomright",c("observations","true position","expected, no corr"),
        col = c("black","red","blue"), lty = c(3,1, 1), lwd=c(3,rep(2,2)))
 ```
 
-Without correction, the expected location follows a straight line. It resembles a linear regression. Without correction, unlikely particles continues to the next time step. With correction, unlikely particles are less likely to be selected to continue to the next time step and therefore the expected location will deviate less from the true position.
+When correction step is omitted, the algortihm prediction is no longer based on the observations of the sensors. This means that the algorithm just uses the transition model to predict what is the likely outcomes after the initial $z_t$ values. Therefore, the spread of the distribution is very wide: this indicates that a lot of uncertainty is involved.  Without correction, unlikely particles continues to the next time step. With correction, unlikely particles are less likely to be selected to continue to the next time step and therefore the expected location will deviate less from the true position.
 
 \clearpage
 
